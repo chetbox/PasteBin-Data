@@ -21,6 +21,9 @@ from os.path import exists, dirname, join
 from os import makedirs
 from glob import glob
 import re
+from threading import Thread
+import time
+
 
 def http_request(params, endpoint, method='POST', send_key=True):
     if send_key:
@@ -72,10 +75,10 @@ def save_thing(thing, file, convert=(lambda x: x)):
         f.write(convert(thing))
 
 def save_latest_trends():
-    save_pastes('data/trends', get_trends())
+    for p in get_trends():
+        save_paste('data/trends', p)
 
 def save_paste(ppath, p):
-    print('---\n' + ppath)
     if not exists(ppath):
         complete = get_and_add_paste_content(p)
         save_thing(complete, ppath, convert=repr)
@@ -87,19 +90,19 @@ def convert_pastes_to_text(paths):
         convert_paste_to_text(f)
 
 def convert_paste_to_text(f):
-        p = eval( codecs.open(f, 'r', encoding='utf-8').read() )
-        ppath = dirname(f) + '/txt/%s - %s.txt' % (
-            p['paste_key'], p['paste_title'] )
+    p = eval( codecs.open(f, 'r', encoding='utf-8').read() )
+    ppath = dirname(f) + '/txt/%s - %s.txt' % (
+        p['paste_key'], p['paste_title'] )
 
-        if not exists(dirname(ppath)):
-            makedirs(dirname(ppath))
+    if not exists(dirname(ppath)):
+        makedirs(dirname(ppath))
 
-        if exists(ppath):
-            continue
+    if exists(ppath):
+        return
 
-        print('---\n' + f)
-        complete = get_and_add_paste_content(p)
-        save_thing(complete['paste_content'], ppath)
+    print('---\n' + f)
+    complete = get_and_add_paste_content(p)
+    save_thing(complete['paste_content'], ppath)
 
 
 class PasteLinkExtractor(HTMLParser):
@@ -151,4 +154,68 @@ def save_recent_pastes():
         save_paste(ppath, p)
         convert_paste_to_text(ppath)
         i += 1
+
+def print_paste(p):
+    format = p['paste_format_short'] if p.has_key('paste_format_short') else '-' * 8
+    print('\n' * 100)
+    print('-' * 32)
+    print(p['paste_title'])
+    print('-' * 32)
+    print(p['paste_content'])
+    print('--' + ('(%s)' % p['paste_key']) + '--' + format + '-' * 14)
+
+class PastePrinter:
+
+    def __init__(self):
+        self.got = set()
+        self.to_display = []
+
+    def fetch_more(self):
+        recent_pastes = filter(
+                lambda p: p['paste_key'] not in self.got,
+                get_recent_pastes()
+        )
+
+        for p in recent_pastes:
+            self.got.add(p['paste_key'])
+
+        for p in recent_pastes:
+            p = get_and_add_paste_content(p)
+            self.to_display.append(p)
+
+    def show_next(self):
+        if len(self.to_display) > 0:
+            next = self.to_display.pop(0)
+            print_paste(next)
+
+pp = PastePrinter()
+ppt_ok = True
+
+def paste_fetcher():
+    global ppt_ok
+
+    while ppt_ok:
+        try:
+            pp.fetch_more()
+            time.sleep(60 * 5)
+        except Exception as e:
+            print(e)
+            ppt_ok = False
+            sys.exit()
+
+ppt = Thread(target=paste_fetcher)
+
+def start_live_print_feed():
+    global ppt_ok
+
+    ppt.start()
+
+    try:
+        while ppt_ok:
+            pp.show_next()
+            time.sleep(20)
+    except Exception as e:
+        print(e)
+        ppt_ok = False
+        sys.exit()
 
