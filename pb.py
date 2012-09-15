@@ -70,7 +70,8 @@ def get_and_add_paste_content(paste_dict):
     paste_dict = paste_dict.copy()
     paste_dict['paste_content'] = \
         get_paste(paste_dict['paste_key'])
-    return paste_dict if paste_filter.keep(paste_dict['paste_content']) else None
+    keep = paste_filter.keep(paste_filter.identify(paste_dict['paste_content']))
+    return paste_dict if keep else None
 
 def save_thing(thing, file, convert=(lambda x: x)):
     with codecs.open(file, 'wb') as f:
@@ -103,7 +104,6 @@ def convert_paste_to_text(f):
     if exists(ppath):
         return
 
-    print('---\n' + f)
     complete = get_and_add_paste_content(p)
     if complete:
         save_thing(complete['paste_content'], ppath)
@@ -114,6 +114,7 @@ class PasteLinkExtractor(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.in_a = False
+        self.seen = set()
         self.links = []
 
     def handle_starttag(self, tag, attrs):
@@ -128,8 +129,9 @@ class PasteLinkExtractor(HTMLParser):
                 return
             
             id = m.group(1)
-            if id not in NON_PASTES:
+            if id not in NON_PASTES and id not in self.seen:
                 self.in_a = True
+                self.seen.add(id)
                 self.links.append({
                     'paste_key': id,
                 })
@@ -160,13 +162,16 @@ def save_recent_pastes():
         i += 1
 
 def print_paste(p):
+    ident = paste_filter.identify(p['paste_content'])
     format = p['paste_format_short'] if p.has_key('paste_format_short') else '-' * 8
     print('\n' * 100)
     print('-' * 32)
     print(p['paste_title'])
     print('-' * 32)
     print(p['paste_content'])
+    #print '^ ' + (str(ident) + ' ') * 10
     print('--' + ('(%s)' % p['paste_key']) + '--' + format + '-' * 14)
+    return paste_filter.keep(ident)
 
 class PastePrinter:
 
@@ -184,14 +189,15 @@ class PastePrinter:
             self.got.add(p['paste_key'])
 
         for p in recent_pastes:
-            p = get_and_add_paste_content(p)
-            if p:
-                self.to_display.append(p)
+            paste = get_and_add_paste_content(p)
+            if paste:
+                self.to_display.append(paste)
 
     def show_next(self):
         if len(self.to_display) > 0:
             next = self.to_display.pop(0)
-            print_paste(next)
+            return print_paste(next)
+        return 'wait'
 
 pp = PastePrinter()
 ppt_ok = True
@@ -203,10 +209,8 @@ def paste_fetcher():
         try:
             pp.fetch_more()
             time.sleep(60 * 5)
-        except Exception as e:
-            print(e)
+        except KeyboardInterrupt as e:
             ppt_ok = False
-            sys.exit()
 
 ppt = Thread(target=paste_fetcher)
 
@@ -217,10 +221,8 @@ def start_live_print_feed():
 
     try:
         while ppt_ok:
-            pp.show_next()
-            time.sleep(20)
-    except Exception as e:
+            if pp.show_next():
+                time.sleep(5)
+    except KeyboardInterrupt as e:
         print(e)
         ppt_ok = False
-        sys.exit()
-
