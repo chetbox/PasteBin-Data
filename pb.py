@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 API_KEY = '1689f6a86b4705aa739a1874915ee4fd'
 SERVER = 'pastebin.com'
