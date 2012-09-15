@@ -192,6 +192,9 @@ class PastePrinter:
             paste = get_and_add_paste_content(p)
             if paste:
                 self.to_display.append(paste)
+                ppath = 'data/recent/%s.repr' % p['paste_key']
+                save_paste(ppath, p)
+                convert_paste_to_text(ppath)
 
     def show_next(self):
         if len(self.to_display) > 0:

@@ -5,12 +5,12 @@ import re
 def identify(content):
     if re.search('(' +
                     '(\.|/)\w*(tradebit|notlong|media|upload|share|file|porn|xxx|sex)\w*\.|' +
-                    '(\.|/)(7z|torrent|cbz|iso|rar|mkv|mp[0-9]|zip)(\W|$)|' +
-                    '\\b(xvid|dvdrip)\\b'
+                    '(\.|/)(7z|torrent|cbz|iso|rar|mkv|avi|mp[0-9]|zip)(\W|$)|' +
+                    '\\b(xvid|x?dvdrip)\\b'
                 ')', content, flags=re.IGNORECASE):
         return 'pirate'
 
-    if re.search('footballcoverage', content, flags=re.IGNORECASE):
+    if re.search('(footballcoverage|allsportslive)', content, flags=re.IGNORECASE):
         return 'stream'
 
     if re.search('</?html[^>]*>', content, flags=re.IGNORECASE):
@@ -93,8 +93,8 @@ class PasteFilterTest(unittest.TestCase):
             ('code', 'class Thing(): \n' +
                 ( ' def __init__(self):\n' + 
                   '      pass\n\n') * 100),
-            ('code', ('  def t():\n' +
-                '    pass\n\n') * 50),
+            ('code', ('def t():\n' +
+                '  pass\n\n') * 50),
             ('code', """SELECT * FROM 'blah'"""),
             ('code', """DELETE * FROM 'blah'"""),
             ('code', '#include\n' * 100),
