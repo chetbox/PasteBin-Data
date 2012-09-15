@@ -24,6 +24,8 @@ import re
 from threading import Thread
 import time
 
+import paste_filter
+
 
 def http_request(params, endpoint, method='POST', send_key=True):
     if send_key:
@@ -68,7 +70,7 @@ def get_and_add_paste_content(paste_dict):
     paste_dict = paste_dict.copy()
     paste_dict['paste_content'] = \
         get_paste(paste_dict['paste_key'])
-    return paste_dict
+    return paste_dict if paste_filter.keep(paste_dict['paste_content']) else None
 
 def save_thing(thing, file, convert=(lambda x: x)):
     with codecs.open(file, 'wb') as f:
@@ -81,7 +83,8 @@ def save_latest_trends():
 def save_paste(ppath, p):
     if not exists(ppath):
         complete = get_and_add_paste_content(p)
-        save_thing(complete, ppath, convert=repr)
+        if complete:
+            save_thing(complete, ppath, convert=repr)
     else:
         print('Already exists.')
 
@@ -102,7 +105,8 @@ def convert_paste_to_text(f):
 
     print('---\n' + f)
     complete = get_and_add_paste_content(p)
-    save_thing(complete['paste_content'], ppath)
+    if complete:
+        save_thing(complete['paste_content'], ppath)
 
 
 class PasteLinkExtractor(HTMLParser):
@@ -181,7 +185,8 @@ class PastePrinter:
 
         for p in recent_pastes:
             p = get_and_add_paste_content(p)
-            self.to_display.append(p)
+            if p:
+                self.to_display.append(p)
 
     def show_next(self):
         if len(self.to_display) > 0:

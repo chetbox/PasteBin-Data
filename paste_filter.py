@@ -4,12 +4,13 @@ import re
 
 def identify(content):
 	if re.search('(' +
-					'(\.|/)\w*(media|upload|share|file|porn|xxx|sex)\w*\.|' +
-					'(\.|/)(torrent|iso|rar|mkv|mp[0-9]|zip)(\W|$)' +
+					'(\.|/)\w*(notlong|media|upload|share|file|porn|xxx|sex)\w*\.|' +
+					'(\.|/)(7z|torrent|iso|rar|mkv|mp[0-9]|zip)(\W|$)|' +
+					'\\b(xvid|dvdrip)\\b'
 				')', content, flags=re.IGNORECASE):
 		return 'pirate'
 
-	if re.search('<html>', content, flags=re.IGNORECASE):
+	if re.search('</?html[^>]*>', content, flags=re.IGNORECASE):
 		return 'html'
 
 def keep(content):
@@ -39,6 +40,7 @@ class PasteFilterTest(unittest.TestCase):
     		('pirate', """http://wupload.com"""),
     		('pirate', """http://deppositfiles.com"""),
     		('pirate', """http://4shared.com"""),
+    		('pirate', """something something Xvid something"""),
     		('pirate', """http://filepost.com"""),
     		('pirate', """http://www.filesonic.com/file/1560757611/Hoodwinked.Too.Hood.VS.Evil.2011.DVDRip.Xvid-MAX.part1.rar"""),
     		('html', '<html>' + 'lots of things. ' * 30 + '</html>'),
