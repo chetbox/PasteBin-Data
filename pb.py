@@ -110,18 +110,15 @@ def convert_pastes_to_text(paths):
 
 def convert_paste_to_text(f):
     p = eval( codecs.open(f, 'r', encoding='utf-8').read() )
-    ppath = dirname(f) + '/txt/%s - %s.txt' % (
-        p['paste_key'], p['paste_title'] )
-
+    filename = '%s - %s' % (p['paste_key'], p['paste_title'].replace('/','_').replace('\\','_').replace('#','_').replace('!','_').replace('?','_') )
+    ppath = dirname(f) + '/txt/%s.txt' % filename
     if not exists(dirname(ppath)):
         makedirs(dirname(ppath))
-
     if exists(ppath):
         return
-
     complete = get_paste(p, ppath)
     if complete['keep']:
-        save_thing(complete['paste_content'], ppath)
+        save_thing(complete['paste_title'] + '\n\n' + complete['paste_content'], ppath)
 
 
 class PasteLinkExtractor(HTMLParser):
