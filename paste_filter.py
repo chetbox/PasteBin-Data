@@ -5,7 +5,7 @@ import re
 def identify(content):
     if re.search('(' +
                     '(\.|/)\w*(tradebit|notlong|media|upload|share|file|porn|xxx|sex)\w*\.|' +
-                    '(\.|/)(7z|torrent|cbz|iso|rar|mkv|avi|mp[0-9]|zip)(\W|$)|' +
+                    '(\.|/)(pdf|7z|torrent|cbz|iso|rar|mkv|avi|mp[0-9]|zip)(\W|$)|' +
                     '\\b(xvid|x?dvdrip)\\b'
                 ')', content, flags=re.IGNORECASE):
         return 'pirate'

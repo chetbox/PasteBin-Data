@@ -31,7 +31,7 @@ def http_request(params, endpoint, method='POST', send_key=True):
     if send_key:
         params = dict(params.items() + [('api_dev_key', API_KEY)])
     req_params = urlencode(params)
-    if method == 'GET':
+    if method == 'GET' and req_params:
         endpoint = endpoint + '?' + req_params
         req_params = ''
     headers = {
@@ -61,17 +61,34 @@ def get_trends():
         'api_option': 'trends'
     }, API_ENDPOINT, method='POST').xpath('//paste'))
 
-def get_paste(id):
+def get_paste_content(id):
     return http_request({
         'i': id,
     }, RAW_ENDPOINT, method='GET', send_key=False)
 
-def get_and_add_paste_content(paste_dict):
-    paste_dict = paste_dict.copy()
-    paste_dict['paste_content'] = \
-        get_paste(paste_dict['paste_key'])
-    keep = paste_filter.keep(paste_filter.identify(paste_dict['paste_content']))
-    return paste_dict if keep else None
+def get_paste_title(id):
+    doc = http_request({}, '/%s' % id, method='GET', send_key=False)
+    return re.search('<h1>(.*)</h1>', doc, re.DOTALL).group(1)
+
+def read_paste(ppath):
+    return eval(
+        codecs.open(ppath, 'r', encoding='utf-8').read()
+    )
+
+def get_paste(paste_dict, ppath):
+    if exists(ppath):
+        paste_dict = read_paste(ppath)
+    else:
+        paste_dict = paste_dict.copy()
+    if not paste_dict.has_key('paste_title'):
+        paste_dict['paste_title'] = get_paste_title(paste_dict['paste_key'])
+    if not paste_dict.has_key('paste_content'):
+        paste_dict['paste_content'] = get_paste_content(paste_dict['paste_key'])
+    if not paste_dict.has_key('type'):
+        paste_dict['type'] = paste_filter.identify(paste_dict['paste_content'])
+    if not paste_dict.has_key('keep'):
+        paste_dict['keep'] = paste_filter.keep(paste_dict['type'])
+    return paste_dict
 
 def save_thing(thing, file, convert=(lambda x: x)):
     with codecs.open(file, 'wb') as f:
@@ -83,8 +100,8 @@ def save_latest_trends():
 
 def save_paste(ppath, p):
     if not exists(ppath):
-        complete = get_and_add_paste_content(p)
-        if complete:
+        complete = get_paste(p, ppath)
+        if complete['keep']:
             save_thing(complete, ppath, convert=repr)
     else:
         print('Already exists.')
@@ -104,8 +121,8 @@ def convert_paste_to_text(f):
     if exists(ppath):
         return
 
-    complete = get_and_add_paste_content(p)
-    if complete:
+    complete = get_paste(p, ppath)
+    if complete['keep']:
         save_thing(complete['paste_content'], ppath)
 
 
@@ -162,16 +179,13 @@ def save_recent_pastes():
         i += 1
 
 def print_paste(p):
-    ident = paste_filter.identify(p['paste_content'])
     format = p['paste_format_short'] if p.has_key('paste_format_short') else '-' * 8
     print('\n' * 100)
     print('-' * 32)
     print(p['paste_title'])
     print('-' * 32)
     print(p['paste_content'])
-    #print '^ ' + (str(ident) + ' ') * 10
-    print('--' + ('(%s)' % p['paste_key']) + '--' + format + '-' * 14)
-    return paste_filter.keep(ident)
+    print('--' + ('(%s)' % p['paste_key']) + '--' + format + '-' * 10)
 
 class PastePrinter:
 
@@ -189,18 +203,16 @@ class PastePrinter:
             self.got.add(p['paste_key'])
 
         for p in recent_pastes:
-            paste = get_and_add_paste_content(p)
-            if paste:
+            ppath = 'data/recent/%s.repr' % p['paste_key']
+            paste = get_paste(p, ppath)
+            if paste['keep']:
                 self.to_display.append(paste)
-                ppath = 'data/recent/%s.repr' % p['paste_key']
-                save_paste(ppath, p)
+                save_paste(ppath, paste)
                 convert_paste_to_text(ppath)
 
     def show_next(self):
         if len(self.to_display) > 0:
             next = self.to_display.pop(0)
-            return print_paste(next)
-        return 'wait'
 
 pp = PastePrinter()
 ppt_ok = True
@@ -211,7 +223,10 @@ def paste_fetcher():
     while ppt_ok:
         try:
             pp.fetch_more()
-            time.sleep(60 * 5)
+            for i in range(60 *5):
+                if not ppt_ok:
+                    break
+                time.sleep()
         except KeyboardInterrupt as e:
             ppt_ok = False
 
@@ -224,8 +239,11 @@ def start_live_print_feed():
 
     try:
         while ppt_ok:
-            if pp.show_next():
-                time.sleep(5)
+            pp.show_next()
+            for i in range(5):
+                if not ppt_ok:
+                    break
+                time.sleep(1)
     except KeyboardInterrupt as e:
         print(e)
         ppt_ok = False
