@@ -103,8 +103,6 @@ def save_paste(ppath, p):
         complete = get_paste(p, ppath)
         if complete['keep']:
             save_thing(complete, ppath, convert=repr)
-    else:
-        print('Already exists.')
 
 def convert_pastes_to_text(paths):
     for f in glob(paths):
@@ -213,6 +211,7 @@ class PastePrinter:
     def show_next(self):
         if len(self.to_display) > 0:
             next = self.to_display.pop(0)
+            print_paste(next)
 
 pp = PastePrinter()
 ppt_ok = True
