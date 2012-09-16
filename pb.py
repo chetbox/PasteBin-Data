@@ -106,7 +106,10 @@ def save_paste(ppath, p):
 
 def convert_pastes_to_text(paths):
     for f in glob(paths):
-        convert_paste_to_text(f)
+        try:
+            convert_paste_to_text(f)
+        except Exception as e:
+            print(e)
 
 def convert_paste_to_text(f):
     p = eval( codecs.open(f, 'r', encoding='utf-8').read() )
@@ -118,7 +121,13 @@ def convert_paste_to_text(f):
         return
     complete = get_paste(p, ppath)
     if complete['keep']:
-        save_thing(complete['paste_title'] + '\n\n' + complete['paste_content'], ppath)
+        save_thing(
+            '\section{%s}\n%s\n\n' % (
+                complete['paste_title'],
+                complete['paste_content']
+            ),
+            ppath
+        )
 
 
 class PasteLinkExtractor(HTMLParser):
